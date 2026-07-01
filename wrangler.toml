@@ -1,4 +1,4 @@
-name = "tel2anon-bot"
+name = "anonymoustg"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
 
