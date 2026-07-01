@@ -14,10 +14,10 @@
 ## پیش‌نیازها
 
 - یک اکانت Cloudflare (رایگان کافی است)
-- Node.js نصب‌شده روی سیستم
+- یک اکانت GitHub
 - یک توکن ربات از [@BotFather](https://t.me/BotFather)
 
-## مراحل راه‌اندازی
+## مراحل راه‌اندازی (اتصال مستقیم GitHub ↔ Cloudflare)
 
 ### ۱. ساخت ربات در تلگرام
 
@@ -29,43 +29,59 @@
 
 و مراحل را طی کنید تا یک توکن مثل `123456789:AAExample...` بگیرید.
 
-### ۲. نصب Wrangler و ورود به حساب Cloudflare
+### ۲. آپلود پروژه در یک ریپازیتوری GitHub
+
+یک ریپازیتوری جدید (می‌تواند private باشد) در GitHub بسازید و همین پوشه را داخلش push کنید:
 
 ```bash
-npm install -g wrangler
-wrangler login
+cd tel2anon-bot
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/<your-username>/tel2anon-bot.git
+git push -u origin main
 ```
 
-### ۳. تنظیم متغیرهای محرمانه (Secrets)
+### ۳. اتصال ریپو به Cloudflare Workers
 
-هیچ‌کدام از این مقادیر داخل کد یا `wrangler.toml` نوشته نمی‌شوند؛ Cloudflare آن‌ها را رمزنگاری‌شده نگه می‌دارد:
+1. وارد [داشبورد Cloudflare](https://dash.cloudflare.com) شوید.
+2. از منو، **Workers & Pages** را باز کنید.
+3. روی **Create application** بزنید.
+4. کنار **Import a repository** روی **Get started** بزنید.
+5. اکانت GitHub خود را متصل کنید (اگر قبلاً نکرده‌اید) و ریپازیتوری `tel2anon-bot` را انتخاب کنید.
+6. در صفحه تنظیمات پروژه:
+   - **مهم:** نام Worker باید دقیقاً همان مقدار `name = "tel2anon-bot"` در فایل `wrangler.toml` باشد، وگرنه build با خطا مواجه می‌شود.
+   - چون فایل `wrangler.toml` در ریشه پروژه وجود دارد، Cloudflare به‌طور خودکار دستور `wrangler deploy` را به‌عنوان Build/Deploy command تشخیص می‌دهد؛ نیازی به تغییر دستی نیست.
+7. روی **Save and Deploy** بزنید و منتظر بمانید تا اولین build کامل شود.
 
-```bash
-wrangler secret put BOT_TOKEN
-# توکنی که از BotFather گرفتید را وارد کنید
-
-wrangler secret put OWNER_ID
-# آیدی عددی خودتان، مثلاً: 8101836386
-
-wrangler secret put WEBHOOK_SECRET
-# یک رشته‌ی تصادفی دلخواه، مثلاً خروجی:  openssl rand -hex 24
-```
-
-### ۴. دیپلوی روی Cloudflare
-
-```bash
-wrangler deploy
-```
-
-در خروجی، آدرسی شبیه این می‌گیرید:
+بعد از اتمام، آدرسی شبیه این خواهید داشت:
 
 ```
 https://tel2anon-bot.<your-subdomain>.workers.dev
 ```
 
+### ۴. تعریف دستی Secretها در داشبورد
+
+بعد از اولین دیپلوی موفق:
+
+1. در همان صفحه Worker، به تب **Settings** بروید.
+2. در بخش **Variables and Secrets**، روی **Add** بزنید.
+3. برای هر مورد زیر، نوع را روی **Secret** بگذارید (نه Text)، نام متغیر و مقدارش را وارد کنید و دوباره **Add variable** بزنید تا سه‌تایی کامل شود:
+
+   | نام متغیر | مقدار |
+   |---|---|
+   | `BOT_TOKEN` | توکنی که از BotFather گرفتید |
+   | `OWNER_ID` | آیدی عددی خودتان، مثلاً: `8101836386` |
+   | `WEBHOOK_SECRET` | یک رشته‌ی تصادفی دلخواه (مثلاً از یک تولیدکننده پسورد آنلاین یا هر رشته‌ی طولانی و غیرقابل‌حدس بسازید) |
+
+4. در پایین صفحه روی **Deploy** بزنید تا این مقادیر روی Worker اعمال شوند.
+
+از این به بعد، هر بار که به شاخه `main` در GitHub پوش کنید، Cloudflare به‌صورت خودکار Worker را rebuild و redeploy می‌کند — بدون نیاز به هیچ دستور دستی.
+
 ### ۵. ثبت Webhook در تلگرام
 
-با همان `WEBHOOK_SECRET` که در مرحله ۳ ساختید:
+با همان `WEBHOOK_SECRET` که در مرحله ۴ تعریف کردید:
 
 ```bash
 curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
@@ -98,5 +114,5 @@ tel2anon-bot/
 ## نکات
 
 - ربات فقط در چت خصوصی (Private) کار می‌کند؛ پیام‌های گروه/کانال نادیده گرفته می‌شوند.
-- می‌توانید تمام متن‌های فارسی داخل آبجکت `TEXT` در ابتدای `src/index.js` را به دلخواه تغییر دهید.
-- برای مشاهده لاگ‌های زنده: `wrangler tail`
+- می‌توانید تمام متن‌های فارسی داخل آبجکت `TEXT` در ابتدای `src/index.js` را به دلخواه تغییر دهید (مستقیم در GitHub ادیت کنید، با هر پوش، Cloudflare خودکار دوباره دیپلوی می‌کند).
+- برای مشاهده لاگ‌های زنده بدون نیاز به نصب چیزی: در داشبورد Cloudflare، صفحه Worker خود را باز کنید و به تب **Logs** بروید.

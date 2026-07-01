@@ -2,12 +2,13 @@ name = "tel2anon-bot"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
 
-# Secrets are NOT stored in this file. Set them with:
-#   wrangler secret put BOT_TOKEN
-#   wrangler secret put OWNER_ID
-#   wrangler secret put WEBHOOK_SECRET
+# Secrets are NOT stored in this file — do not put real values here.
+# Set them manually in the Cloudflare dashboard:
+#   Worker > Settings > Variables and Secrets > Add (type: Secret)
 #
 # BOT_TOKEN      -> token you get from @BotFather
 # OWNER_ID       -> your numeric Telegram user ID (e.g. 8101836386)
 # WEBHOOK_SECRET -> any random string you choose yourself, used to verify
 #                    that incoming requests really come from Telegram
+#
+# (Alternatively, if you ever use Wrangler CLI locally: wrangler secret put <NAME>)
